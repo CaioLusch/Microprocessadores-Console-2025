@@ -50,7 +50,7 @@
 _start:
 
 movia sp, 0x007FFFFC                  /* stack starts from highest memory address in SDRAM */
-movia r6, UART
+movia r6, UART                        /* move the uart adress into r6 */
 
 /* print a text string */
 
@@ -58,10 +58,10 @@ movia r8, TEXT_STRING
 
 LOOP:
     
-    ldb r5, 0(r8)
-    beq r5, zero, END       /* string is null-terminated */
-    call PUT_JTAG
-    addi r8, r8, 1
+    ldb r5, 0(r8)                   /* load the bitwisee string into r5 */
+    beq r5, zero, END               /* verify if the bit written of the string is 0 (string final) */
+    call PUT_JTAG                   /* go to the write subroutine (PUT_JTAG) in the terminal */
+    addi r8, r8, 1                  /* update the reading to the next char of the string */
     
     br LOOP
 
@@ -76,14 +76,14 @@ PUT_JTAG:
     stwio r5, 0(r6)                 /* send the character */
 
 END_PUT:
-/* restore registers */
-ldw r4, 0(sp)
-addi sp, sp, 4
-ret
+/* restore registers */             
+ldw r4, 0(sp)                       /* pop the stack frame */
+addi sp, sp, 4                      /* update stack poiter */
+ret                                 /* return to the calee (in this case, the main loop) */
 
 
 END:
-br END
+br END                              /* end the program */
 
 
 .data
