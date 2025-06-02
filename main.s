@@ -44,43 +44,58 @@
         2. restaura-lo assim que a animacão for cancelada?
 */
 
+/*
+    r5: usado em subrotinas
+    r6: UART port 
+    r7: endereço de BUFFER_COMMAND
+    r8: ininicalmente, contem a string padrao pedindo para inserir um comando
+    r9: endereço de enter
+    r10: valores de comparacao para os condicionais para verificar qual a instrução a ser executada
+    r11: valor contido no endereço atual de BUFFER_COMMAND
+*/
+
+
 .equ UART, 0x10001000
 
 .global _start
 _start:
 
-movia sp, 0x007FFFFC                  /* stack starts from highest memory address in SDRAM */
+movia sp, 0x100000                    /* stack starts from highest memory address in SDRAM */
 movia r6, UART                        /* move the uart adress into r6 */
-
-/* print a text string */
-
 movia r8, TEXT_STRING
 
-LOOP:
+INIT:
     
-    ldb r5, 0(r8)                   /* load the bitwisee string into r5 */
-    beq r5, zero, END               /* verify if the bit written of the string is 0 (string final) */
-    call PUT_JTAG                   /* go to the write subroutine (PUT_JTAG) in the terminal */
-    addi r8, r8, 1                  /* update the reading to the next char of the string */
+    ldb r5, 0(r8)                       /* load the bitwise string into r5 */
+    beq r5, zero, END_INIT              /* verify if the bit written of the string is 0 (string final) */
+    call PUT_JTAG                       /* go to the write subroutine (PUT_JTAG) in the terminal */
+    addi r8, r8, 1                      /* update the reading to the next char of the string */
     
-    br LOOP
+    br INIT
 
-PUT_JTAG:
+END_INIT:
 
-/* save any modified registers */
-    subi sp, sp, 4                  /* reserve space on the stack */
-    stw r4, 0(sp)                   /* save register */
-    ldwio r4, 4(r6)                 /* read the JTAG UART Control register */
-    andhi r4, r4, 0xffff            /* check for write space */
-    beq r4, r0, END_PUT             /* if no space, ignore the character */
-    stwio r5, 0(r6)                 /* send the character */
+READ_POLL:
+    call GET_JTAG                       /* chamar a funcao para escrever no buffer a entrafa desejada */
+    movia r7, BUFFER_COMMAND            /* endereço do buffer */
+    ldb r11, (r7)
+    
+    addi r10, r0, 0 
+    beq r11, r10, LED
+    
+    addi r10, r10, 1
+    beq r11, r10, ANIMACAO
+    
+    addi r10, r10, 1
+    beq r11, r10, CRONOMETRO
+    
 
-END_PUT:
-/* restore registers */             
-ldw r4, 0(sp)                       /* pop the stack frame */
-addi sp, sp, 4                      /* update stack poiter */
-ret                                 /* return to the calee (in this case, the main loop) */
-
+ANIMACAO:
+    call SUB_ANIMACAO    
+CRONOMETRO:
+    call SUB_CRONOMETRO
+LED:
+    call SUB_LED
 
 END:
 br END                              /* end the program */
@@ -88,4 +103,11 @@ br END                              /* end the program */
 
 .data
 TEXT_STRING:
-    .asciz "\nEntre com o comando:"
+    .asciz "\nEntre com o comando:\n"
+
+.global BUFFER_COMMAND
+
+BUFFER_COMMAND:                            /* buffer para armazenar as instruções */
+.skip 100
+
+
