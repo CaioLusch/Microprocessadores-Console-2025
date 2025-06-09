@@ -91,29 +91,23 @@ READ_POLL:
     
 
 ANIMACAO:
-    call SUB_ANIMACAO    
+    call CALL_ANIMATION
+    br READ_POLL
 CRONOMETRO:
     call SUB_CRONOMETRO
+    br READ_POLL
 LED:
-    call SUB_LED
+    call CALL_LED
+    br READ_POLL
 
 END:
 br END                              /* end the program */
 
 
-.data
 TEXT_STRING:
-    .asciz "\n 00 XX - Acender xx-ésimo LED \n
-               01 XX - Apagar xx-ésimo LED  \n
-               10    - Animação com leds dada pelo estado da chave SW0 \n
-               11    - Para a animação do LED \n
-               20    - Inicia crônometro de segundos \n
-               21    - cancela cronometro \n
-               Entre com o comando:\n"
+    .asciz "\n 00 XX: Acender xx-esimo LED \n 01 XX: Apagar xx-esimo LED \n 10: animacao com leds com SW0 \n 11: Para a animacao do LED \n 20: Inicia cronometro de segundos \n 21: cancela cronometro \n Entre com o comando:\n"
 
 .global BUFFER_COMMAND
 
 BUFFER_COMMAND:                            /* buffer para armazenar as instruções */
 .skip 100
-
-
