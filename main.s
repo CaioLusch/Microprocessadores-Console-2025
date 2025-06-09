@@ -103,7 +103,13 @@ br END                              /* end the program */
 
 .data
 TEXT_STRING:
-    .asciz "\nEntre com o comando:\n"
+    .asciz "\n 00 XX - Acender xx-ésimo LED \n
+               01 XX - Apagar xx-ésimo LED  \n
+               10    - Animação com leds dada pelo estado da chave SW0 \n
+               11    - Para a animação do LED \n
+               20    - Inicia crônometro de segundos \n
+               21    - cancela cronometro \n
+               Entre com o comando:\n"
 
 .global BUFFER_COMMAND
 
