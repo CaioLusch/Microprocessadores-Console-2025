@@ -38,8 +38,14 @@
         br loop
     }
 
+a rotina precisa continuar rodando, mas o usuário precisa ser capaz de digitar novos comandos mesmo durante a execução, como?
+    interrupção
+    Não é possível fazer o programa executar dois locais ao mesmo tempo, por isso precisamos da interrupção
+
+consideração importante: não há passagem de tempo entre uma chamada do contador e outra (processador é muito mais rápido)
+
 */
-.equ SWITCH, 40
+.equ SWITCH, 0x40
 
 .global CALL_ANIMATION
 CALL_ANIMATION:
@@ -73,7 +79,7 @@ CALL_ANIMATION:
 
             or r16, r13, r4              /* acender bit correspondente */
             stwio r16, 0(r12)            /* escreve novo valor no endeço do LED */
-        
+    
         ANIM_APAGAR_DE:
             stwio zero, 0(r12)
         
@@ -91,6 +97,9 @@ CALL_ANIMATION:
 
             or r16, r13, r4              /* acender bit correspondente */
             stwio r16, 0(r12)            /* escreve novo valor no endeço do LED */
+
+        WAIT_MS:
+            call TIMER
 
         ANIM_APAGAR_ED:
             stwio zero, 0(r12)

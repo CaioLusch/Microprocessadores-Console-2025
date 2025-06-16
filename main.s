@@ -75,6 +75,9 @@ INIT:
 
 END_INIT:
 
+TIMER_CONFIG:
+    movi r18, 0x00                      /* configurando inicialmente as flags de animacao e cronometro como 0 */
+
 READ_POLL:
     call GET_JTAG                       /* chamar a funcao para escrever no buffer a entrafa desejada */
     movia r7, BUFFER_COMMAND            /* endereço do buffer */
@@ -90,13 +93,13 @@ READ_POLL:
     beq r11, r10, CRONOMETRO
     
 
-ANIMACAO:
-    call CALL_ANIMATION
+ANIMACAO:                               /* tudo que essas rótulos vao fazer é modificar as vars para habilitar que a interrupção realize as modificaçoes */
+    movi r18, 0x01
     br READ_POLL
 CRONOMETRO:
     call SUB_CRONOMETRO
     br READ_POLL
-LED:
+LED:                                   /* Exceto LED, porque nao usa o timer (uhull), pode permanecer assim mesmo */
     call CALL_LED
     br READ_POLL
 

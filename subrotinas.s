@@ -1,3 +1,22 @@
+/*
+    r5: usado em subrotinas
+    r6: UART port 
+    r7: endereço de BUFFER_COMMAND                                                                      (inicializado na main)
+    r8: ininicalmente, contem a string padrao pedindo para inserir um comando                           (não usado nesse arquivo)
+    r9: endereço de enter                                                                               (também não usado nesse arquivo)
+    r10: valores de comparacao para os condicionais para verificar qual a instrução a ser executada
+    r11: valor contido no endereço atual de BUFFER_COMMAND
+    r12: endereco dos leds vermelhos (referencial para todas as outras)
+    r13: estado atual dos LEDs
+    r14: número do LED
+    r15: temp para calculo da dezena
+    r16: estado aceso
+    r17: timer
+    r18: Flag para animacao e cronometro
+
+*/
+
+.equ COUNTER, 0x2000
 .global PUT_JTAG
 
 PUT_JTAG:
@@ -55,18 +74,47 @@ GET_POLL:
     
     ret
 
+/* 
+Timer gera interrupções a cada 200 ms, apenas isso
+tratamento de interrupções verifica de quem veio a interrupção
+após isso, checa as flags de animacao e do cronometro
+realiza as acoes necessarias conforme as flags
 
-.global SUB_LED
-SUB_LED:
-ret
+esse código do timer será eecutado apenas uma vez, para setupar o que o timer deve fazer
+uma vez executado, o timer (hardware) estará configurado para gerar interrupções a acada 200 ms, portanto sem problemas com o código
+o que é necessário é, dentro desses tratamentos de interrupção, verificar se as flags estão ativas ou n e executar as que estiverem 
 
-.global SUB_CRONOMETRO
-SUB_CRONOMETRO:
-ret
-
-.global SUB_ANIMACAO
-SUB_ANIMACAO:
-ret
-/*
-
+tá tá tá, mas o que isso implica?
+    simples, se a interrupção é gerada a cada 200ms, precisamos que entre uma e outra o led fique aceso, dando exatamente o tempo de 200 ms
 */
+
+.global SET_TIMER
+SET_TIMER:
+
+    /* PRÓLOGO */
+    subi sp, sp, 12                      /* reserve space on the stack */
+    stw r13, 0(sp)
+    stw r4, 4(sp)                       /* save register */
+    stw r5, 8(sp)
+
+
+    ldwio r17, COUNTER(r12)     /* Pegar leitura do timer */
+    
+    movia r4, 10000000          /* valor de contagem necessário para passar 200 ms */
+
+    andi r5, r4, 0xffff         /* r5 contém a parte baixa */
+    stwio r5, 2008(r12)           /*store da parte low */
+
+    srli r4, r4, 16             /* r4 contem parte alta */
+    stwio r4, 200C(r12)         /* escreve a parte alta na memoria */
+
+    movi r4, 0b0111             /* STOP = 0, START = 1, CONT = 1, ITO = 1 */
+    ldwio r4, 2004(r12)         
+
+    /* EPILOGO */ 
+    ldw r5, 8(sp)
+    ldw r4, 4(sp)
+    ldw r13, 0(sp)
+    addi sp, sp, 12
+
+ret
