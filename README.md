@@ -9,7 +9,7 @@ Este documento descreve o cronograma de produção do Projeto Final de Microproc
   - `main.s`
   - `led.s`
   - `cronômetro.s`
-  - `animacao.s´
+  - `animacao.s`
 
 ### Semana do dia 02 de Junho
 - **Objetivo**: Elaboração detalhada dos LEDs.
