@@ -33,18 +33,20 @@
 CALL_LED:
     
     /* PRÓLOGO */
-    subi sp, sp, 8                     /* reserve space on the stack */
-    stw r13, 0(sp)
-    stw r4, 4(sp)                      /* save register */
+    subi sp, sp, 24      # Mais espaço para salvar registradores
+    stw r4, 0(sp)
+    stw r5, 4(sp)
+    stw r10, 8(sp)
+    stw r11, 12(sp)
+    stw r13, 16(sp)
+    stw r14, 20(sp)
     
-    movia r12, 0x10000000               /* endereço do led vermelho */
-    ldwio r13, (r12)                   /* leitura do endereço dos leds vermelhos (estado atual dos leds) */
+    movia r13, LEDS_MANUAIS_STATE
+    ldw r13, 0(r13)                    /* r13 agora contém o estado manual salvo */
 
     ldb r11, 1(r7)                     /* atualizar para o proximo codigo do vetor  */
-    /* subi r11, r11, 0x30 */          /* converte ASCII para número */
 
     /* Verifica se comando[1] == 0 → apagar */
-    
     addi r10, r0, 0                    /* zerar a variavel de comparacao */
     beq r11, r10, ACENDER              /* Verificar se condiz com comando de acender */
     
@@ -73,8 +75,8 @@ CALL_LED:
         sll r4, r4, r14
 
         or r13, r13, r4              /* acender bit correspondente */
-        stwio r13, 0(r12)            /* escreve novo valor no endeço do LED */
-        br END_LED
+        
+        br SAVE_AND_UPDATE
 
     APAGAR:
         
@@ -96,13 +98,30 @@ CALL_LED:
 
         nor r4, r4, r4               /* inverte bits para apagar */
         and r13, r13, r4             /* apaga bit correspondente */
-        stwio r13, 0(r12)
-        br END_LED
+        br SAVE_AND_UPDATE
+
+    SAVE_AND_UPDATE:
+        movia r4, LEDS_MANUAIS_STATE
+        stw r13, 0(r4)
+        
+        /* Verifica se a animação está rodando. */
+        movia r4, FLAG_ANIMACAO
+        ldw r5, 0(r4)
+        movi r10, 1
+        beq r5, r10, END_LED         /* Se animação está LIGADA, pula a escrita no hardware e retorna */
+
+        /* Se a animação está DESLIGADA, atualiza o hardware agora */
+        
+        movia r4, 0x10000000 # Endereço do hardware dos LEDs
+        stwio r13, 0(r4)     # Escreve o novo estado manual nos LEDs físicos
 
     END_LED:
         /* EPÍLOGO */   
-        ldw r13, 0(sp)          
-        ldw r4, 4(sp)                      /* pop the stack frame */
-        addi sp, sp, 4                     /* update stack poiter */
+        ldw r4, 0(sp)
+        ldw r5, 4(sp)
+        ldw r10, 8(sp)
+        ldw r14, 12(sp)
+        ldw r15, 16(sp)
+        addi sp, sp, 20
         
         ret                                /* return to the calee */

@@ -84,6 +84,9 @@ TIMER_CONFIG:
     movia r4, FLAG_ANIMACAO
     stw r0, 0(r4)
 
+    movia r4, LEDS_MANUAIS_STATE
+    stw r0, 0(r4)
+
     /* Habilitar interrupções no processador Nios II*/
     movi et, 1
     wrctl ienable, et
@@ -147,6 +150,11 @@ FLAG_ANIMACAO:
 .global BUFFER_COMMAND
 BUFFER_COMMAND:                            /* buffer para armazenar as instruções */
 .skip 100
+
+.align 2
+.global LEDS_MANUAIS_STATE
+LEDS_MANUAIS_STATE:
+    .word 0
 
 TEXT_STRING:
     .asciz "\n 00 XX: Acender xx-esimo LED \n 01 XX: Apagar xx-esimo LED \n 10: animacao com leds com SW0 \n 11: Para a animacao do LED \n 20: Inicia cronometro de segundos \n 21: cancela cronometro \n Entre com o comando:\n"

@@ -61,16 +61,21 @@ CALL_ANIMATION:
 
     movia r12, 0x10000000               /* endereço do led vermelho */
 
-    stwio zero, 0(r12)                   /* apaga todos os leds antes de ascender o prox */
+    
+    movia r10, LEDS_MANUAIS_STATE       /* Pegar o estado dos LEDs manuais da memória */
+    ldw r10, 0(r10)                     /* r10 contém a máscara dos LEDs manuais */
 
-    /* pegar da memoria qual led deve acender */
-    movia r8, ANIMATION_COUNTER         /* r8 = endereço da variavel*/
-    ldw r8, 0(r8)                       /* r8 = valor do contador (número do LED) */
+    
+    movia r8, ANIMATION_COUNTER         /*Pega o contador da animação e calcula o LED da vez*/
+    ldw r8, 0(r8)                       /* r8 = número do LED da animação */
 
-    /* Cria a máscara para acender o LED correto: 1 << r8 (deslocar o '1' em um numero de casas igual ao valor contido em r8) */
+    # Cria a máscara para o LED da animação
     movi r4, 1
-    sll r4, r4, r8
-    stwio r4, 0(r12)                    /* Acende o led da posição */
+    sll r4, r4, r8                      /* r4 contém a máscara do LED da animação */
+
+    
+    or r4, r4, r10                      /* r4 = máscara final (manuais + animação)*/
+    stwio r4, 0(r12)
 
     /* alavanca para decidir a direção */
     ldwio r5, SWITCH(r12)
