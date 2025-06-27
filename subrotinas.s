@@ -15,7 +15,7 @@
     r18: Flag para animacao e cronometro
 
 */
-
+.equ TIMER_BASE, 0x10002000
 .equ COUNTER, 0x2000
 .global PUT_JTAG
 
@@ -75,46 +75,60 @@ GET_POLL:
     ret
 
 /* 
-Timer gera interrupções a cada 200 ms, apenas isso
-tratamento de interrupções verifica de quem veio a interrupção
-após isso, checa as flags de animacao e do cronometro
-realiza as acoes necessarias conforme as flags
+    Timer gera interrupções a cada 200 ms, apenas isso
+    tratamento de interrupções verifica de quem veio a interrupção
+    após isso, checa as flags de animacao e do cronometro
+    realiza as acoes necessarias conforme as flags
 
-esse código do timer será eecutado apenas uma vez, para setupar o que o timer deve fazer
-uma vez executado, o timer (hardware) estará configurado para gerar interrupções a acada 200 ms, portanto sem problemas com o código
-o que é necessário é, dentro desses tratamentos de interrupção, verificar se as flags estão ativas ou n e executar as que estiverem 
+    esse código do timer será eecutado apenas uma vez, para setupar o que o timer deve fazer
+    uma vez executado, o timer (hardware) estará configurado para gerar interrupções a acada 200 ms, portanto sem problemas com o código
+    o que é necessário é, dentro desses tratamentos de interrupção, verificar se as flags estão ativas ou n e executar as que estiverem 
 
-tá tá tá, mas o que isso implica?
-    simples, se a interrupção é gerada a cada 200ms, precisamos que entre uma e outra o led fique aceso, dando exatamente o tempo de 200 ms
+    tá tá tá, mas o que isso implica?
+        simples, se a interrupção é gerada a cada 200ms, precisamos que entre uma e outra o led fique aceso, dando exatamente o tempo de 200 ms
 */
 
 .global SET_TIMER
 SET_TIMER:
 
     /* PRÓLOGO */
-    subi sp, sp, 12                      /* reserve space on the stack */
-    stw r13, 0(sp)
-    stw r4, 4(sp)                       /* save register */
+    subi sp, sp, 16              # Reserva espaço para 4 registradores (16 bytes)
+    stw r17, 0(sp)
+    stw r4, 4(sp)
     stw r5, 8(sp)
+    stw ra, 12(sp)
 
+    movia r17, TIMER_BASE        # Carrega o endereço base do timer em r17
 
-    ldwio r17, COUNTER(r12)     /* Pegar leitura do timer */
+    movia r4, 10000000           # Valor de contagem para 200 ms (50MHz * 0.2s)
     
-    movia r4, 10000000          /* valor de contagem necessário para passar 200 ms */
+    andi r5, r4, 0xffff          # r5 contém a parte baixa do período (16 bits)
+    stwio r5, 8(r17)             # Escreve no registrador period_low (offset 8)
 
-    andi r5, r4, 0xffff         /* r5 contém a parte baixa */
-    stwio r5, 2008(r12)           /*store da parte low */
+    srli r4, r4, 16              # r4 contém a parte alta do período
+    stwio r4, 12(r17)            # Escreve no registrador period_high (offset 12)
 
-    srli r4, r4, 16             /* r4 contem parte alta */
-    stwio r4, 200C(r12)         /* escreve a parte alta na memoria */
+    movi r4, 0b0111              # STOP=0, START=1, CONT=1, ITO=1 (habilita interrupção)
+    stwio r4, 4(r17)             # Escreve no registrador de controle (offset 4)
 
-    movi r4, 0b0111             /* STOP = 0, START = 1, CONT = 1, ITO = 1 */
-    ldwio r4, 2004(r12)         
-
-    /* EPILOGO */ 
-    ldw r5, 8(sp)
+    /* EPÍLOGO */
+    ldw r17, 0(sp)
     ldw r4, 4(sp)
-    ldw r13, 0(sp)
-    addi sp, sp, 12
+    ldw r5, 8(sp)
+    ldw ra, 12(sp)
+    addi sp, sp, 16              # Libera os 16 bytes reservados no prólogo
 
 ret
+
+# Adicione este código ao final de subrotinas.s
+
+.global DELAY
+DELAY:
+    # Este é um loop de atraso simples para criar uma pausa.
+    # r20 será nosso contador de delay.
+    movia r20, 5000000      # Ajuste este valor para deixar a animação mais rápida/lenta
+
+DELAY_LOOP:
+    subi r20, r20, 1
+    bne r20, r0, DELAY_LOOP
+    ret

@@ -52,6 +52,8 @@
     r9: endereço de enter
     r10: valores de comparacao para os condicionais para verificar qual a instrução a ser executada
     r11: valor contido no endereço atual de BUFFER_COMMAND
+    r18: flag animacao
+    r19: flag cronometro
 */
 
 
@@ -63,6 +65,21 @@ _start:
 movia sp, 0x100000                    /* stack starts from highest memory address in SDRAM */
 movia r6, UART                        /* move the uart adress into r6 */
 movia r8, TEXT_STRING
+movia r12, 0x10000000               /* endereço do led vermelho (usado como referencial)*/
+
+# --- INÍCIO DO TESTE ---
+# Vamos pular a leitura de comandos e ir direto para um loop de animação.
+
+# Zera o contador da animação uma vez.
+movia r4, ANIMATION_COUNTER
+stw r0, 0(r4)
+
+ANIMATION_TEST_LOOP:
+    call CALL_ANIMATION     # Chama sua rotina para mover o LED uma posição
+    call DELAY              # Chama a rotina de atraso para podermos ver a mudança
+    br ANIMATION_TEST_LOOP  # Repete para sempre
+
+# --- FIM DO TESTE ---
 
 INIT:
     
@@ -76,10 +93,16 @@ INIT:
 END_INIT:
 
 TIMER_CONFIG:
-    movi r18, 0x00                      /* configurando inicialmente as flags de animacao e cronometro como 0 */
+    movi r18, 0x00                      /* configurando inicialmente as flags de animacao como 0 */
+    
+    /* habilitar interrupções no processador Nios II*/
+    movi et, 1
+    wrctl ienable, et
+
+    call SET_TIMER
 
 READ_POLL:
-    call GET_JTAG                       /* chamar a funcao para escrever no buffer a entrafa desejada */
+    call GET_JTAG                       /* chamar a funcao para escrever no buffer a entrada desejada */
     movia r7, BUFFER_COMMAND            /* endereço do buffer */
     ldb r11, (r7)
     
@@ -94,10 +117,23 @@ READ_POLL:
     
 
 ANIMACAO:                               /* tudo que essas rótulos vao fazer é modificar as vars para habilitar que a interrupção realize as modificaçoes */
-    movi r18, 0x01
-    br READ_POLL
+    ldb r5, 1(r7)                       /* Lê o segundo dígito do comando */
+    beq r5, r0, START_ANIM              /* Se for '0', inicia a animação */
+    movi r10, 1
+    beq r5, r10, STOP_ANIM              /* Se for '1', para a animação */
+    br READ_POLL                        /* Se chegou aqui é pq o comando é invalido */
+
+    START_ANIM:
+        movi r18, 1                         /* Seta a flag de animacao como 1 */
+        movia r4, ANIMATION_COUNTER         /* Endereço do nosso contador */
+        stw r0, 0(r4)                       /* Zera o contador, para a animação começar do LED 0 */
+        br READ_POLL                        /* Voltar para inserir outro comando */
+
+    STOP_ANIM:
+        movi r18, 0                         /* Zera a flag de animação */
+        br READ_POLL
+
 CRONOMETRO:
-    call SUB_CRONOMETRO
     br READ_POLL
 LED:                                   /* Exceto LED, porque nao usa o timer (uhull), pode permanecer assim mesmo */
     call CALL_LED

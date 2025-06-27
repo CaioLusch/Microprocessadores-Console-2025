@@ -38,11 +38,11 @@
         br loop
     }
 
-a rotina precisa continuar rodando, mas o usuário precisa ser capaz de digitar novos comandos mesmo durante a execução, como?
-    interrupção
-    Não é possível fazer o programa executar dois locais ao mesmo tempo, por isso precisamos da interrupção
+    a rotina precisa continuar rodando, mas o usuário precisa ser capaz de digitar novos comandos mesmo durante a execução, como?
+        interrupção
+        Não é possível fazer o programa executar dois locais ao mesmo tempo, por isso precisamos da interrupção
 
-consideração importante: não há passagem de tempo entre uma chamada do contador e outra (processador é muito mais rápido)
+    consideração importante: não há passagem de tempo entre uma chamada do contador e outra (processador é muito mais rápido)
 
 */
 .equ SWITCH, 0x40
@@ -51,72 +51,69 @@ consideração importante: não há passagem de tempo entre uma chamada do conta
 CALL_ANIMATION:
     
     /* PRÓLOGO */
-    subi sp, sp, 12                      /* reserve space on the stack */
-    stw r13, 0(sp)
-    stw r4, 4(sp)                       /* save register */
+    subi sp, sp, 20                     /* Mais espaço para salvar registradores */
+    stw ra, 0(sp)
+    stw r4, 4(sp)
     stw r5, 8(sp)
+    stw r8, 12(sp)
+    stw r10, 16(sp)
 
     movia r12, 0x10000000               /* endereço do led vermelho */
-    ldwio r13, (r12)                    /* leitura do endereço dos leds vermelhos (estado atual dos leds) */
 
-    movi r10, 17
-    stwio r0, 0(r12)                    /* garantir que todos os LEDS estao apagados */
+    stwio zero, 0(r12)                   /* apaga todos os leds antes de ascender o prox */
 
-    ldwio r5, SWITCH(r12)               /* r5 le no endereco da alavanca */
+    /* pegar da memoria qual led deve acender */
+    movia r8, ANIMATION_COUNTER         /* r8 = endereço da variavel*/
+    ldw r8, 0(r8)                       /* r8 = valor do contador (número do LED) */
+
+    /* Cria a máscara para acender o LED correto: 1 << r8 (deslocar o '1' em um numero de casas igual ao valor contido em r8) */
     movi r4, 1
-    and r5, r5, r4
-    
-    beq r5, r4, LOOP_ESQ_DIR
+    sll r4, r4, r8
+    stwio r4, 0(r12)                    /* Acende o led da posição */
 
-    LOOP_DIR_ESQ:
-        mov r8, zero                       /* numero do led a ser aceso */
+    /* alavanca para decidir a direção */
+    ldwio r5, SWITCH(r12)
+    andi r5, r5, 1                      /* Isola o bit 0 da alavanca */
 
-        ANIM_ACENDER_DE:
+    beq r5, r0, DIR_ESQ_STEP            /* Se alavanca = 0, (17 <- 0) */
+    br ESQ_DIR_STEP                     /* Se alavanca = 1, (17 -> 0) */
+
+    DIR_ESQ_STEP:
+        addi r8, r8, 1                      /* Incrementa o contador do LED */
+        movi r10, 18
+        bne r8, r10, SAVE_STATE             /* Se não chegou em 18, apenas salva */
+        mov r8, r0                          /* Se chegou em 18, volta para 0 */
         
-            /* criação da máscara: 1 << r8 */
-            movi r4, 1
-            sll r4, r4, r8
+        br SAVE_STATE
 
-            or r16, r13, r4              /* acender bit correspondente */
-            stwio r16, 0(r12)            /* escreve novo valor no endeço do LED */
-    
-        ANIM_APAGAR_DE:
-            stwio zero, 0(r12)
+    ESQ_DIR_STEP:
+        subi r8, r8, 1                      /* Decrementa o contador do LED */
+        movi r10, -1
+        bne r8, r10, SAVE_STATE             /* Se não chegou em -1, apenas salva */
+        movi r8, 17                         /* Se chegou em -1, volta para 17 */
         
-        addi r8, r8, 1
+        br SAVE_STATE
 
-        bgt r8, r10, END_ANIMATION
-        br ANIM_ACENDER_DE
-
-    LOOP_ESQ_DIR:
-        movia r8, 17
-
-        ANIM_ACENDER_ED:
-            movi r4, 1
-            sll r4, r4, r8
-
-            or r16, r13, r4              /* acender bit correspondente */
-            stwio r16, 0(r12)            /* escreve novo valor no endeço do LED */
-
-        WAIT_MS:
-            call TIMER
-
-        ANIM_APAGAR_ED:
-            stwio zero, 0(r12)
-
-        beq r8, zero, END_ANIMATION  
-        addi r8, r8, -1
-        br ANIM_ACENDER_ED
+SAVE_STATE:
+    /* Salva o novo estado (próximo LED a ser aceso) na memória */
+    movia r4, ANIMATION_COUNTER
+    stw r8, 0(r4)
 
 END_ANIMATION:
-        
+    
     /* EPÍLOGO */   
-    ldw r13, 0(sp)          
-    ldw r4, 4(sp)                      /* pop the stack frame */
+    ldw ra, 0(sp)
+    ldw r4, 4(sp)
     ldw r5, 8(sp)
-    addi sp, sp, 4                     /* update stack poiter */
+    ldw r8, 12(sp)
+    ldw r10, 16(sp)
+    addi sp, sp, 20
     
     ret
+
+.global ANIMATION_COUNTER    /* variavel em memória para armazenar qual led deve ser aceso*/
+ANIMATION_COUNTER:
+.word 0
 
 
 
