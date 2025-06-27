@@ -45,6 +45,7 @@
 */
 
 /*
+    r4: flag animacao
     r5: usado em subrotinas
     r6: UART port 
     r7: endereço de BUFFER_COMMAND
@@ -67,20 +68,6 @@ movia r6, UART                        /* move the uart adress into r6 */
 movia r8, TEXT_STRING
 movia r12, 0x10000000               /* endereço do led vermelho (usado como referencial)*/
 
-# --- INÍCIO DO TESTE ---
-# Vamos pular a leitura de comandos e ir direto para um loop de animação.
-
-# Zera o contador da animação uma vez.
-movia r4, ANIMATION_COUNTER
-stw r0, 0(r4)
-
-ANIMATION_TEST_LOOP:
-    call CALL_ANIMATION     # Chama sua rotina para mover o LED uma posição
-    call DELAY              # Chama a rotina de atraso para podermos ver a mudança
-    br ANIMATION_TEST_LOOP  # Repete para sempre
-
-# --- FIM DO TESTE ---
-
 INIT:
     
     ldb r5, 0(r8)                       /* load the bitwise string into r5 */
@@ -93,11 +80,17 @@ INIT:
 END_INIT:
 
 TIMER_CONFIG:
-    movi r18, 0x00                      /* configurando inicialmente as flags de animacao como 0 */
-    
-    /* habilitar interrupções no processador Nios II*/
+    /* Zera a flag de animação na memória ao iniciar */
+    movia r4, FLAG_ANIMACAO
+    stw r0, 0(r4)
+
+    /* Habilitar interrupções no processador Nios II*/
     movi et, 1
     wrctl ienable, et
+
+    # Habilita interrupções globais (IRQ 0 e IRQ 1)
+    movi r15, 0x1                  # Global enable
+    wrctl status, r15
 
     call SET_TIMER
 
@@ -124,13 +117,17 @@ ANIMACAO:                               /* tudo que essas rótulos vao fazer é 
     br READ_POLL                        /* Se chegou aqui é pq o comando é invalido */
 
     START_ANIM:
-        movi r18, 1                         /* Seta a flag de animacao como 1 */
-        movia r4, ANIMATION_COUNTER         /* Endereço do nosso contador */
-        stw r0, 0(r4)                       /* Zera o contador, para a animação começar do LED 0 */
-        br READ_POLL                        /* Voltar para inserir outro comando */
+        movia r4, FLAG_ANIMACAO
+        movi r5, 1
+        stw r5, 0(r4)
+
+        movia r4, ANIMATION_COUNTER         # Endereço do nosso contador
+        stw r0, 0(r4)                       # Zera o contador, para a animação começar do LED 0
+        br READ_POLL                        # Voltar para inserir outro comando
 
     STOP_ANIM:
-        movi r18, 0                         /* Zera a flag de animação */
+        movia r4, FLAG_ANIMACAO
+        stw r0, 0(r4)
         br READ_POLL
 
 CRONOMETRO:
@@ -143,10 +140,14 @@ END:
 br END                              /* end the program */
 
 
+.global FLAG_ANIMACAO
+FLAG_ANIMACAO:
+.word 0
+
+.global BUFFER_COMMAND
+BUFFER_COMMAND:                            /* buffer para armazenar as instruções */
+.skip 100
+
 TEXT_STRING:
     .asciz "\n 00 XX: Acender xx-esimo LED \n 01 XX: Apagar xx-esimo LED \n 10: animacao com leds com SW0 \n 11: Para a animacao do LED \n 20: Inicia cronometro de segundos \n 21: cancela cronometro \n Entre com o comando:\n"
 
-.global BUFFER_COMMAND
-
-BUFFER_COMMAND:                            /* buffer para armazenar as instruções */
-.skip 100

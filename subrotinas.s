@@ -1,4 +1,5 @@
 /*
+    r4: flag animacao
     r5: usado em subrotinas
     r6: UART port 
     r7: endereço de BUFFER_COMMAND                                                                      (inicializado na main)
@@ -101,14 +102,16 @@ SET_TIMER:
     movia r17, TIMER_BASE        # Carrega o endereço base do timer em r17
 
     movia r4, 10000000           # Valor de contagem para 200 ms (50MHz * 0.2s)
+
+    # CORREÇÃO: Escreve os 16 bits baixos no registrador period_low
+    andi r5, r4, 0xFFFF
+    stwio r5, 8(r17)
+
+    # CORREÇÃO: Escreve os 16 bits altos no registrador period_high
+    srli r5, r4, 16
+    stwio r5, 12(r17)
     
-    andi r5, r4, 0xffff          # r5 contém a parte baixa do período (16 bits)
-    stwio r5, 8(r17)             # Escreve no registrador period_low (offset 8)
-
-    srli r4, r4, 16              # r4 contém a parte alta do período
-    stwio r4, 12(r17)            # Escreve no registrador period_high (offset 12)
-
-    movi r4, 0b0111              # STOP=0, START=1, CONT=1, ITO=1 (habilita interrupção)
+    movi r4, 0x7              # STOP=0, START=1, CONT=1, ITO=1 (habilita interrupção)
     stwio r4, 4(r17)             # Escreve no registrador de controle (offset 4)
 
     /* EPÍLOGO */
@@ -119,16 +122,3 @@ SET_TIMER:
     addi sp, sp, 16              # Libera os 16 bytes reservados no prólogo
 
 ret
-
-# Adicione este código ao final de subrotinas.s
-
-.global DELAY
-DELAY:
-    # Este é um loop de atraso simples para criar uma pausa.
-    # r20 será nosso contador de delay.
-    movia r20, 5000000      # Ajuste este valor para deixar a animação mais rápida/lenta
-
-DELAY_LOOP:
-    subi r20, r20, 1
-    bne r20, r0, DELAY_LOOP
-    ret

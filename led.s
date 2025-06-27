@@ -15,6 +15,7 @@
 */
 
 /*
+    r4: flag animacao
     r5: usado em subrotinas
     r6: UART port 
     r7: endereço de BUFFER_COMMAND                                                  (inicializado na main)
