@@ -59,7 +59,7 @@
 
 
 .equ UART, 0x10001000
-
+.equ KEY_ONE, 0x10000050
 .global _start
 _start:
 
@@ -79,7 +79,7 @@ INIT:
 
 END_INIT:
 
-TIMER_CONFIG:
+CONFIG:
     /* Zera a flag de animação na memória ao iniciar */
     movia r4, FLAG_ANIMACAO
     stw r0, 0(r4)
@@ -87,15 +87,23 @@ TIMER_CONFIG:
     movia r4, LEDS_MANUAIS_STATE
     stw r0, 0(r4)
 
-    /* Habilitar interrupções no processador Nios II*/
-    movi et, 1
-    wrctl ienable, et
+    call CANCELA_CRONOMETRO
+
 
     # Habilita interrupções globais (IRQ 0 e IRQ 1)
     movi r15, 0x1                  # Global enable
     wrctl status, r15
 
     call SET_TIMER
+
+    # Habilita interrupção do Pushbutton KEY1 (IRQ 1)
+    movia r4, KEY_ONE
+    movi r5, 0b0010 # Habilita interrupção apenas para KEY1
+    stwio r5, 8(r4)  # Escreve no registrador de máscara de interrupção (offset 8)
+    
+    /* Habilitar interrupções no processador Nios II*/
+    movi et, 1
+    wrctl ienable, et
 
 READ_POLL:
     call GET_JTAG                       /* chamar a funcao para escrever no buffer a entrada desejada */
@@ -134,7 +142,22 @@ ANIMACAO:                               /* tudo que essas rótulos vao fazer é 
         br READ_POLL
 
 CRONOMETRO:
+    ldb r5, 1(r7)
+    beq r5, r0, START_CRONOMETRO
+    movi r10, 1
+    beq r5, r10, STOP_CRONOMETRO
     br READ_POLL
+
+    START_CRONOMETRO:
+        movia r4, FLAG_CRONOMETRO
+        movi r5, 1
+        stw r5, 0(r4)
+        br READ_POLL
+
+    STOP_CRONOMETRO:
+        call CANCELA_CRONOMETRO
+        br READ_POLL
+
 LED:                                   /* Exceto LED, porque nao usa o timer (uhull), pode permanecer assim mesmo */
     call CALL_LED
     br READ_POLL
@@ -154,6 +177,25 @@ BUFFER_COMMAND:                            /* buffer para armazenar as instruç�
 .align 2
 .global LEDS_MANUAIS_STATE
 LEDS_MANUAIS_STATE:
+    .word 0
+
+.global FLAG_CRONOMETRO
+FLAG_CRONOMETRO:
+    .word 0
+.global CRONOMETRO_PAUSA
+CRONOMETRO_PAUSA:
+    .word 0
+.global TEMPO_MIN_DEZ
+TEMPO_MIN_DEZ:
+    .word 0
+.global TEMPO_MIN_UNI
+TEMPO_MIN_UNI:
+    .word 0
+.global TEMPO_SEG_DEZ
+TEMPO_SEG_DEZ:
+    .word 0
+.global TEMPO_SEG_UNI
+TEMPO_SEG_UNI:
     .word 0
 
 TEXT_STRING:
